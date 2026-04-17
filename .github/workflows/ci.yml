@@ -275,16 +275,30 @@ jobs:
   build-status:
     name: Build Status Check
     runs-on: ubuntu-latest
-    needs: [build, migrations, unit-tests, integration-tests]
+    needs: [build, migrations, unit-tests, integration-tests, k6-smoke-test, k6-load-test, k6-stress-test]
     if: always()
     
     steps:
       - name: Check build status
         run: |
-          if [ "${{ needs.build.result }}" == "failure" ] || \
-             [ "${{ needs.migrations.result }}" == "failure" ] || \
-             [ "${{ needs.unit-tests.result }}" == "failure" ] || \
-             [ "${{ needs.integration-tests.result }}" == "failure" ]; then
+          BUILD="${{ needs.build.result }}"
+          MIGRATIONS="${{ needs.migrations.result }}"
+          UNIT_TESTS="${{ needs.unit-tests.result }}"
+          INT_TESTS="${{ needs.integration-tests.result }}"
+          K6_SMOKE="${{ needs.k6-smoke-test.result }}"
+          K6_LOAD="${{ needs.k6-load-test.result }}"
+          K6_STRESS="${{ needs.k6-stress-test.result }}"
+          
+          FAILED=0
+          [ "$BUILD" == "failure" ] && FAILED=1
+          [ "$MIGRATIONS" == "failure" ] && FAILED=1
+          [ "$UNIT_TESTS" == "failure" ] && FAILED=1
+          [ "$INT_TESTS" == "failure" ] && FAILED=1
+          [ "$K6_SMOKE" == "failure" ] && FAILED=1
+          [ "$K6_LOAD" == "failure" ] && FAILED=1
+          [ "$K6_STRESS" == "failure" ] && FAILED=1
+          
+          if [ $FAILED -eq 1 ]; then
             echo "❌ CI Pipeline Failed"
             exit 1
           else
