@@ -49,6 +49,9 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
+      - name: Install EF Core tools
+        run: dotnet tool install -g dotnet-ef || dotnet tool update -g dotnet-ef
+
       - name: Restore dependencies
         run: dotnet restore Lab7.sln
 
