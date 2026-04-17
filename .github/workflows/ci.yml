@@ -27,13 +27,13 @@ jobs:
           dotnet-version: '10.0.x'
 
       - name: Restore dependencies
-        run: dotnet restore Lab7/Lab7.sln
+        run: dotnet restore Lab7.sln
 
       - name: Build API (Release)
-        run: dotnet build Lab7/Lab7.sln -c Release --no-restore
+        run: dotnet build Lab7.sln -c Release --no-restore
 
       - name: Check for compilation warnings
-        run: dotnet build Lab7/Lab7.sln -c Release --no-restore /p:TreatWarningsAsErrors=true
+        run: dotnet build Lab7.sln -c Release --no-restore /p:TreatWarningsAsErrors=true
 
   migrations:
     name: Migrations Check
