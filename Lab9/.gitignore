@@ -1,0 +1,8 @@
+node_modules/
+.auth/
+playwright-report/
+test-results/
+*.log
+.env
+.env.local
+.env.*.local

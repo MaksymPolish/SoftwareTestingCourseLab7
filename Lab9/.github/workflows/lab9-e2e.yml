@@ -1,0 +1,55 @@
+name: Lab-9 E2E (Playwright)
+
+on:
+  push:
+    branches: ["**"]
+  workflow_dispatch:
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+    defaults:
+      run:
+        working-directory: Lab9
+    env:
+      UMSYS_EMAIL: ${{ secrets.UMSYS_EMAIL }}
+      UMSYS_PASSWORD: ${{ secrets.UMSYS_PASSWORD }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: Lab9/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browser (${{ matrix.browser }})
+        run: npx playwright install --with-deps ${{ matrix.browser }}
+
+      - name: Run Playwright tests (setup + ${{ matrix.browser }})
+        run: npx playwright test --project=setup --project=${{ matrix.browser }}
+
+      - name: Upload Playwright report (${{ matrix.browser }})
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ matrix.browser }}
+          path: Lab9/playwright-report/
+          retention-days: 7
+
+      - name: Upload traces on failure (${{ matrix.browser }})
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces-${{ matrix.browser }}
+          path: Lab9/test-results/
+          retention-days: 7

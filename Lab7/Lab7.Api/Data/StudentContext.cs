@@ -26,7 +26,6 @@ public class StudentContext : DbContext
             entity.Property(e => e.GPA).HasPrecision(3, 2);
             entity.Property(e => e.EnrollmentDate).IsRequired();
 
-            // Index for search queries
             entity.HasIndex(e => e.StudentNumber).IsUnique();
             entity.HasIndex(e => e.Email);
         });

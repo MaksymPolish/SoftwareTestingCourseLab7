@@ -1,0 +1,18 @@
+{
+  "name": "lab9",
+  "version": "1.0.0",
+  "description": "End-to-End UI тестування: Playwright, Page Object Model та Page Factory",
+  "type": "module",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "report": "playwright show-report"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@playwright/test": "^1.59.1",
+    "dotenv": "^17.4.2"
+  }
+}

@@ -4,13 +4,13 @@ on:
   push:
     branches:
       - main
-      - 'feature/**'
-      - 'fix/**'
+      - feature
+      - fix
   pull_request:
     branches:
       - main
-      - 'feature/**'
-      - 'fix/**'
+      - feature
+      - fix
 
 jobs:
   build:
@@ -27,13 +27,13 @@ jobs:
           dotnet-version: '10.0.x'
 
       - name: Restore dependencies
-        run: dotnet restore Lab7/Lab7.sln
+        run: dotnet restore Lab7.sln
 
       - name: Build API (Release)
-        run: dotnet build Lab7/Lab7.sln -c Release --no-restore
+        run: dotnet build Lab7.sln -c Release --no-restore
 
       - name: Check for compilation warnings
-        run: dotnet build Lab7/Lab7.sln -c Release --no-restore /p:TreatWarningsAsErrors=true
+        run: dotnet build Lab7.sln -c Release --no-restore /p:TreatWarningsAsErrors=true
 
   migrations:
     name: Migrations Check
@@ -49,12 +49,15 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
+      - name: Install EF Core tools
+        run: dotnet tool install -g dotnet-ef || dotnet tool update -g dotnet-ef
+
       - name: Restore dependencies
-        run: dotnet restore Lab7/Lab7.sln
+        run: dotnet restore Lab7.sln
 
       - name: Check pending migrations
         run: |
-          cd Lab7/Lab7.Api
+          cd Lab7.Api
           dotnet ef migrations list --project .
 
   unit-tests:
@@ -72,10 +75,10 @@ jobs:
           dotnet-version: '10.0.x'
 
       - name: Restore dependencies
-        run: dotnet restore Lab7/Lab7.sln
+        run: dotnet restore Lab7.sln
 
       - name: Run unit tests
-        run: dotnet test Lab7/Lab7.IntegrationTests/Lab7.IntegrationTests.csproj -c Release --no-restore --verbosity normal --logger "trx;LogFileName=test-results.trx"
+        run: dotnet test Lab7.IntegrationTests/Lab7.IntegrationTests.csproj -c Release --no-restore --verbosity normal --logger "trx;LogFileName=test-results.trx"
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
@@ -105,10 +108,10 @@ jobs:
           dotnet-version: '10.0.x'
 
       - name: Restore dependencies
-        run: dotnet restore Lab7/Lab7.sln
+        run: dotnet restore Lab7.sln
 
       - name: Run integration tests with Testcontainers
-        run: dotnet test Lab7/Lab7.IntegrationTests/Lab7.IntegrationTests.csproj -c Release --no-restore --filter "PostgreSql|StudentsController" --verbosity normal --logger "trx;LogFileName=integration-results.trx"
+        run: dotnet test Lab7.IntegrationTests/Lab7.IntegrationTests.csproj -c Release --no-restore --filter "PostgreSql|StudentsController" --verbosity normal --logger "trx;LogFileName=integration-results.trx"
         env:
           DOCKER_HOST: unix:///var/run/docker.sock
 
@@ -123,7 +126,7 @@ jobs:
     name: k6 Smoke Test
     runs-on: ubuntu-latest
     needs: build
-    if: github.event_name == 'push' && (contains(github.ref, 'main') || contains(github.ref, 'feature/') || contains(github.ref, 'fix/'))
+    if: github.ref == 'refs/heads/feature' || github.ref == 'refs/heads/fix'
     
     steps:
       - name: Checkout code
@@ -136,7 +139,7 @@ jobs:
 
       - name: Start API
         run: |
-          cd Lab7/Lab7.Api
+          cd Lab7.Api
           dotnet run -c Release &
         env:
           ASPNETCORE_URLS: http://localhost:5000
@@ -156,10 +159,10 @@ jobs:
           sudo apt-get install -y k6
 
       - name: Create results directory
-        run: mkdir -p Lab7/results
+        run: mkdir -p results
 
       - name: Run k6 smoke test
-        run: k6 run Lab7/tests/smoke_test.js --out json=Lab7/results/smoke_test_results.json
+        run: k6 run tests/smoke_test.js --out json=results/smoke_test_results.json
         continue-on-error: true
 
       - name: Upload k6 smoke test results
@@ -167,13 +170,13 @@ jobs:
         if: always()
         with:
           name: k6-smoke-results
-          path: Lab7/results/smoke_test_results.json
+          path: results/smoke_test_results.json
 
   k6-load-test:
     name: k6 Load Test
     runs-on: ubuntu-latest
     needs: build
-    if: github.event_name == 'push' && contains(github.ref, 'main')
+    if: github.ref == 'refs/heads/feature' || github.ref == 'refs/heads/fix'
     
     steps:
       - name: Checkout code
@@ -186,7 +189,7 @@ jobs:
 
       - name: Start API
         run: |
-          cd Lab7/Lab7.Api
+          cd Lab7.Api
           dotnet run -c Release &
         env:
           ASPNETCORE_URLS: http://localhost:5000
@@ -206,10 +209,10 @@ jobs:
           sudo apt-get install -y k6
 
       - name: Create results directory
-        run: mkdir -p Lab7/results
+        run: mkdir -p results
 
       - name: Run k6 load test
-        run: k6 run Lab7/tests/load_test.js --out json=Lab7/results/load_test_results.json
+        run: k6 run tests/load_test.js --out json=results/load_test_results.json
         continue-on-error: true
 
       - name: Upload k6 load test results
@@ -217,21 +220,85 @@ jobs:
         if: always()
         with:
           name: k6-load-results
-          path: Lab7/results/load_test_results.json
+          path: results/load_test_results.json
+
+  k6-stress-test:
+    name: k6 Stress Test
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/feature' || github.ref == 'refs/heads/fix'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Start API
+        run: |
+          cd Lab7.Api
+          dotnet run -c Release &
+        env:
+          ASPNETCORE_URLS: http://localhost:5000
+
+      - name: Wait for API to start
+        run: |
+          for i in {1..30}; do
+            curl -f http://localhost:5000/api/students && break
+            sleep 2
+          done
+
+      - name: Install k6
+        run: |
+          sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69 2>/dev/null || true
+          echo "deb https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6-stable.list
+          sudo apt-get update
+          sudo apt-get install -y k6
+
+      - name: Create results directory
+        run: mkdir -p results
+
+      - name: Run k6 stress test
+        run: k6 run tests/stress_test.js --out json=results/stress_test_results.json
+        continue-on-error: true
+
+      - name: Upload k6 stress test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: k6-stress-results
+          path: results/stress_test_results.json
 
   build-status:
     name: Build Status Check
     runs-on: ubuntu-latest
-    needs: [build, migrations, unit-tests, integration-tests]
+    needs: [build, migrations, unit-tests, integration-tests, k6-smoke-test, k6-load-test, k6-stress-test]
     if: always()
     
     steps:
       - name: Check build status
         run: |
-          if [ "${{ needs.build.result }}" == "failure" ] || \
-             [ "${{ needs.migrations.result }}" == "failure" ] || \
-             [ "${{ needs.unit-tests.result }}" == "failure" ] || \
-             [ "${{ needs.integration-tests.result }}" == "failure" ]; then
+          BUILD="${{ needs.build.result }}"
+          MIGRATIONS="${{ needs.migrations.result }}"
+          UNIT_TESTS="${{ needs.unit-tests.result }}"
+          INT_TESTS="${{ needs.integration-tests.result }}"
+          K6_SMOKE="${{ needs.k6-smoke-test.result }}"
+          K6_LOAD="${{ needs.k6-load-test.result }}"
+          K6_STRESS="${{ needs.k6-stress-test.result }}"
+          
+          FAILED=0
+          [ "$BUILD" == "failure" ] && FAILED=1
+          [ "$MIGRATIONS" == "failure" ] && FAILED=1
+          [ "$UNIT_TESTS" == "failure" ] && FAILED=1
+          [ "$INT_TESTS" == "failure" ] && FAILED=1
+          [ "$K6_SMOKE" == "failure" ] && FAILED=1
+          [ "$K6_LOAD" == "failure" ] && FAILED=1
+          [ "$K6_STRESS" == "failure" ] && FAILED=1
+          
+          if [ $FAILED -eq 1 ]; then
             echo "❌ CI Pipeline Failed"
             exit 1
           else

@@ -21,7 +21,6 @@ public class StudentsController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IEnumerable<Student>>> GetStudents()
     {
-        // Simulate database delay
         await Task.Delay(50);
         var students = await _context.Students.ToListAsync();
         return Ok(students);
@@ -30,7 +29,6 @@ public class StudentsController : ControllerBase
     [HttpGet("{id:int}")]
     public async Task<ActionResult<Student>> GetStudent(int id)
     {
-        // Simulate database delay
         await Task.Delay(20);
         var student = await _context.Students.FindAsync(id);
         
@@ -45,7 +43,6 @@ public class StudentsController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<Student>> CreateStudent([FromBody] Student student)
     {
-        // Simulate database delay
         await Task.Delay(30);
         
         _context.Students.Add(student);
@@ -57,7 +54,7 @@ public class StudentsController : ControllerBase
     [HttpGet("search")]
     public async Task<ActionResult<IEnumerable<Student>>> Search([FromQuery] string q)
     {
-        // Simulate expensive computation
+    
         await Task.Delay(150);
         
         var results = await _context.Students
@@ -72,7 +69,6 @@ public class StudentsController : ControllerBase
     [HttpGet("bycourse/{courseYear:int}")]
     public async Task<ActionResult<IEnumerable<Student>>> GetByYear(int courseYear)
     {
-        // Simulate database delay
         await Task.Delay(40);
         
         var students = await _context.Students
